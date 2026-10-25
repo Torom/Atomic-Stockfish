@@ -608,6 +608,9 @@ bool Search::Worker::iterative_deepening() {
     {
         rootDepth++;
 
+        // Do not tune these values. They are not intended for playing strength.
+        int seekMateThreshold = 750 + 220000 / (rootDepth * rootDepth);
+
         // Age out PV variability metric and signal the start of a new iteration.
         if (mainThread)
         {
@@ -652,12 +655,10 @@ bool Search::Worker::iterative_deepening() {
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
             beta      = std::min(avg + delta, VALUE_INFINITE);
 
-            // Do not tune these values. They are not intended for playing strength.
-            // previousScore, not score: searching an earlier MultiPV line leaves the
-            // moves that failed low at -VALUE_INFINITE, which is not a mate score.
+            // For multiPV we use previousScore because score is often -VALUE_INFINITE
+            Value seekMateScore = pvIdx ? rootMoves[pvIdx].previousScore : rootMoves[pvIdx].score;
             seekMate =
-              rootMoves[pvIdx].previousScore != -VALUE_INFINITE
-              && std::abs(rootMoves[pvIdx].previousScore) >= 750 + 220000 / (rootDepth * rootDepth);
+              seekMateScore != -VALUE_INFINITE && std::abs(seekMateScore) >= seekMateThreshold;
 
             // Adjust optimism based on root move's averageScore
             optimism[us]  = 137 * avg / (std::abs(avg) + 81);
